@@ -1,0 +1,24 @@
+[project]
+name = "text-to-sql-agentic-rag-chatbot"
+version = "0.1.0"
+description = "Text-to-SQL Agentic RAG Chatbot Workshop"
+authors = [{ name = "Param Harrison", email = "param@learnwithparam.com" }]
+requires-python = ">=3.10"
+dependencies = [
+    "langgraph>=0.2.14",
+    "chainlit>=1.1.306",
+    # "openai>=1.40.0", # LiteLLM handles this, but good to have if needed directly
+    "pandas>=2.2.2",
+    "plotly>=5.24.0",
+    "python-dotenv>=1.0.1",
+    "litellm>=1.44.0",
+    "grandalf>=0.8", # For graph visualization
+    "kagglehub>=0.2.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["."]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
