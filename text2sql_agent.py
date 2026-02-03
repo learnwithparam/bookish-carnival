@@ -109,6 +109,9 @@ class AgentState(TypedDict):
     graph_type: str
     graph_json: str  # Plotly figure JSON for Chainlit
     is_in_scope: bool  # Whether the question is about e-commerce data
+    guardrails_reason: str # Reasoning for scope decision
+    sql_reason: str # Reasoning for SQL generation
+    graph_reason: str # Reasoning for graph requirement
 
 
 # Agent configurations with different roles and personalities
@@ -199,6 +202,7 @@ If the question is ambiguous but could potentially relate to the e-commerce data
     
     result = json.loads(response.choices[0].message.content)
     state["is_in_scope"] = result.get("is_in_scope", False)
+    state["guardrails_reason"] = result.get("reason", "No reasoning provided.")
     is_greeting = result.get("is_greeting", False)
     
     # If it's a greeting, provide a welcome message
@@ -227,15 +231,22 @@ Question: {question}
 Important Guidelines:
 1. Use only the tables and columns mentioned in the schema
 2. Use proper JOIN clauses when querying multiple tables
-3. Return ONLY the SQL query without any explanation or markdown formatting
+3. Return the output in JSON format with "sql_query" and "reasoning" fields
 4. If the question contains multiple sub-questions, generate separate SQL queries separated by semicolons
 5. Use aggregate functions (COUNT, SUM, AVG, etc.) appropriately
 6. Add LIMIT clauses for queries that might return many rows (default LIMIT 10 unless user specifies)
 7. Use proper WHERE clauses to filter data
-8. For date comparisons, remember the dates are stored as TEXT in ISO format
+8. For date comparisons, remember the dates are stored as TEXT in ISO format string (e.g. '2022-01-01')
 9. Each SQL statement should be on its own line for clarity when multiple queries are needed
 
-Generate the SQL query:"""
+Analyze the user's request and database schema, then generate the SQL.
+
+Respond in JSON format:
+{{
+    "reasoning": "Explain your thought process: which tables you chose and why, how you are joining them, and any filters applied.",
+    "sql_query": "SELECT ..."
+}}
+"""
 
     response = completion(
         model=DEFAULT_MODEL,
@@ -243,14 +254,19 @@ Generate the SQL query:"""
             {"role": "system", "content": AGENT_CONFIGS["sql_agent"]["system_prompt"]},
             {"role": "user", "content": prompt}
         ],
-        temperature=0
+        temperature=0,
+        response_format={"type": "json_object"}
     )
     
-    sql_query = response.choices[0].message.content.strip()
-    # Remove markdown code blocks if present
+    result = json.loads(response.choices[0].message.content)
+    sql_query = result.get("sql_query", "").strip()
+    reasoning = result.get("reasoning", "No reasoning provided.")
+    
+    # Remove markdown code blocks if present (just in case)
     sql_query = sql_query.replace("```sql", "").replace("```", "").strip()
     
     state["sql_query"] = sql_query
+    state["sql_reason"] = reasoning
     state["iteration"] = iteration + 1
     
     return state
@@ -436,6 +452,7 @@ Respond in JSON format:
     decision = json.loads(response.choices[0].message.content)
     state["needs_graph"] = decision.get("needs_graph", False)
     state["graph_type"] = decision.get("graph_type", "none")
+    state["graph_reason"] = decision.get("reason", "No reasoning provided.")
     
     return state
 
@@ -674,7 +691,10 @@ async def process_question_stream(question: str):
         needs_graph=False,
         graph_type="",
         graph_json="",
-        is_in_scope=True
+        is_in_scope=True,
+        guardrails_reason="",
+        sql_reason="",
+        graph_reason=""
     )
     
     current_state = initial_state.copy()

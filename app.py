@@ -62,12 +62,13 @@ async def main(message: cl.Message):
                 if event_type == "node_start":
                     node_name = event["node"]
                     node_display_names = {
-                        "generate_sql": "📝 Generate SQL Query",
+                        "guardrails_agent": "🛡️ Guardrails Check",
+                        "sql_agent": "📝 Generate SQL Query",
                         "execute_sql": "⚙️ Execute SQL Query",
-                        "generate_answer": "💬 Generate Answer",
-                        "handle_error": "🔧 Handle Error",
+                        "analysis_agent": "💬 Generate Answer",
+                        "error_agent": "🔧 Handle Error",
                         "decide_graph_need": "📊 Decide Graph Need",
-                        "generate_graph": "📈 Generate Graph"
+                        "viz_agent": "📈 Generate Graph"
                     }
                     
                     display_name = node_display_names.get(node_name, node_name)
@@ -93,9 +94,16 @@ async def main(message: cl.Message):
                         # Format output based on node type
                         output_text = ""
                         
-                        if node_name == "generate_sql":
+                        if node_name == "guardrails_agent":
+                            reason = output.get("guardrails_reason", "No reasoning provided.")
+                            is_scope = output.get("is_in_scope", False)
+                            status = "✅ In Scope" if is_scope else "❌ Out of Scope"
+                            output_text = f"**Status:** {status}\n**Reasoning:** {reason}"
+
+                        elif node_name == "sql_agent":
                             sql = output.get("sql_query", "")
-                            output_text = f"**Generated SQL Query:**\n```sql\n{sql}\n```"
+                            reason = output.get("sql_reason", "")
+                            output_text = f"**Reasoning:** {reason}\n\n**Generated SQL Query:**\n```sql\n{sql}\n```"
                         
                         elif node_name == "execute_sql":
                             if output.get("error"):
@@ -107,11 +115,11 @@ async def main(message: cl.Message):
                                     result = result[:500] + "\n... (truncated)"
                                 output_text = f"**Query Results:**\n```json\n{result}\n```"
                         
-                        elif node_name == "generate_answer":
+                        elif node_name == "analysis_agent":
                             answer = output.get("final_answer", "")
                             output_text = f"**Answer:**\n{answer}"
                         
-                        elif node_name == "handle_error":
+                        elif node_name == "error_agent":
                             corrected = output.get("sql_query", "")
                             iteration = output.get("iteration", 0)
                             output_text = f"**Corrected SQL (Attempt {iteration}):**\n```sql\n{corrected}\n```"
@@ -119,12 +127,13 @@ async def main(message: cl.Message):
                         elif node_name == "decide_graph_need":
                             needs_graph = output.get("needs_graph", False)
                             graph_type = output.get("graph_type", "")
+                            reason = output.get("graph_reason", "")
                             if needs_graph:
-                                output_text = f"✅ **Graph Needed:** {graph_type.upper()} chart"
+                                output_text = f"✅ **Graph Needed:** {graph_type.upper()} chart\n**Reasoning:** {reason}"
                             else:
-                                output_text = "ℹ️ **No graph needed** for this query"
+                                output_text = f"ℹ️ **No graph needed** for this query\n**Reasoning:** {reason}"
                         
-                        elif node_name == "generate_graph":
+                        elif node_name == "viz_agent":
                             has_graph = bool(output.get("graph_json"))
                             if has_graph:
                                 output_text = "✅ Graph generated successfully"
