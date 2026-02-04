@@ -24,3 +24,16 @@ clean: ## Clean up artifacts
 	@echo "🧹 Cleaning up..."
 	@rm -rf .venv
 	@find . -type d -name "__pycache__" -exec rm -rf {} +
+
+test-notebook: ## Run the notebook to verify it executes correctly
+	@echo "🧪 Testing notebook..."
+	@uv run jupyter nbconvert --to notebook --execute --stdout multi-agent-chatbot.ipynb > /dev/null
+
+run-notebook: ## Start JupyterLab
+	@echo "🚀 Starting JupyterLab..."
+	@uv run jupyter lab
+
+validate-notebook: ## Validate notebook format
+	@echo "🔍 Validating notebook..."
+	@uv run jupyter nbconvert --to notebook --stdout multi-agent-chatbot.ipynb > /dev/null
+
